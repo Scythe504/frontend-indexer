@@ -168,8 +168,7 @@ export function WebhookForm() {
     setIsSubmitting(true)
     try {
       console.log("Webhook values:", values)
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      
       router.push("/onboarding/complete")
     } catch (error) {
       console.error("Webhook error:", error)
@@ -184,7 +183,6 @@ export function WebhookForm() {
         <Webhook className="h-6 w-6 text-primary" />
         <h2 className="text-xl font-semibold">Transaction Monitoring</h2>
       </div>
-
       <CardContent className="p-6">
         <div className="mb-6">
           <p className="text-sm text-muted-foreground">
@@ -257,14 +255,9 @@ export function WebhookForm() {
               )}
             />
 
-            <div className="flex gap-4">
-              <Button variant="outline" className="w-full" onClick={() => router.back()}>
-                Back
-              </Button>
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Submitting..." : "Complete Setup"}
-              </Button>
-            </div>
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? "Submitting..." : "Complete Setup"}
+            </Button>
           </form>
         </Form>
       </CardContent>

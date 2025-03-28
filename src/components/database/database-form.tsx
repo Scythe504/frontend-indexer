@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -12,6 +12,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import next from "next"
+import {
+  useSearchParams,
+  useRouter
+} from "next/navigation"
+
 
 const detailsFormSchema = z.object({
   host: z.string().min(1, { message: "Host is required" }),
@@ -31,12 +37,24 @@ const connectionStringSchema = z.object({
     }),
 })
 
+const backendUrl = process.env.BACKEND_URL || "https://bb32-152-59-133-165.ngrok-free.app"
+
 type DetailsFormValues = z.infer<typeof detailsFormSchema>
 type ConnectionStringFormValues = z.infer<typeof connectionStringSchema>
 
 export default function PostgresLoginForm() {
   const [isConnecting, setIsConnecting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [errorMsg, setErrorMsg] = useState("")
+  const router = useRouter()
+  const params = useSearchParams()
+  const token = params.get("token")
+
+  useEffect(() => {
+    if (token) {
+      localStorage.setItem("auth_token", token);
+    }
+  }, [token])
 
   const detailsForm = useForm<DetailsFormValues>({
     resolver: zodResolver(detailsFormSchema),
@@ -59,13 +77,34 @@ export default function PostgresLoginForm() {
 
   async function onDetailsSubmit(values: DetailsFormValues) {
     setIsConnecting(true)
-
     try {
-      console.log("Connection details:", values)
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      alert("Successfully connected to database!")
+      const res = await fetch(`${backendUrl}/create-database`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true"
+        },
+        body: JSON.stringify({
+          // @ts-ignore
+          host: values.host,
+          port: values.port,
+          db_name: values.database,
+          username: values.username,
+          password: values.password,
+          ssl_mode: values.sslMode
+        })
+      })
+
+      const data = await res.json()
+      if (res.status != 200) {
+        setErrorMsg(data)
+      } else {
+        setTimeout(() => router.push('/onboarding/index-address'), 3000)
+      }
+
     } catch (error) {
-      console.error("Connection error:", error)
+      console.error(error)
     } finally {
       setIsConnecting(false)
     }
@@ -73,11 +112,26 @@ export default function PostgresLoginForm() {
 
   async function onConnectionStringSubmit(values: ConnectionStringFormValues) {
     setIsConnecting(true)
-
     try {
-      console.log("Connection string:", values.connectionString)
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      alert("Successfully connected to database!")
+      const res = await fetch(`${backendUrl}/create-database`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: {
+          // @ts-ignore
+          connection_string: values.connectionString
+        }
+      })
+
+      const data = await res.json()
+      if (res.status != 200) {
+        setErrorMsg(data)
+      } else {
+
+      }
+
     } catch (error) {
       console.error("Connection error:", error)
     } finally {
@@ -86,7 +140,7 @@ export default function PostgresLoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 p-4 dark:from-slate-900 dark:to-slate-800">
+    <div className="flex min-h-screen items-center justify-center">
       <Card className="w-full max-w-md border-none shadow-lg">
         <div className="flex items-center gap-2 border-b p-6">
           <Database className="h-6 w-6 text-primary" />
@@ -205,7 +259,7 @@ export default function PostgresLoginForm() {
                         <FormLabel>SSL Mode</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger className="w-full">
                               <SelectValue placeholder="Select SSL mode" />
                             </SelectTrigger>
                           </FormControl>
@@ -222,7 +276,6 @@ export default function PostgresLoginForm() {
                       </FormItem>
                     )}
                   />
-
                   <Button type="submit" className="w-full" disabled={isConnecting}>
                     {isConnecting ? "Connecting..." : "Connect to Database"}
                   </Button>
@@ -269,7 +322,7 @@ export default function PostgresLoginForm() {
         </Tabs>
 
         <div className="border-t p-4 text-center text-sm text-muted-foreground">
-          Your credentials are securely transmitted and not stored.
+          Your credentials are securely stored.
         </div>
       </Card>
     </div>
